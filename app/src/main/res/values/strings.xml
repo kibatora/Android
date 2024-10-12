@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Vis</string>
+    <string name="location_format">Широта: %1$s\nДолгота: %2$s</string>
+    <string name="location_not_available">Местоположение недоступно</string>
+    <string name="location_permission_denied">Нет разрешения на доступ к локации</string>
+</resources>
