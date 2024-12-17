@@ -139,8 +139,8 @@ class MainActivity : Activity(), OnMapReadyCallback {
 
                         }
 
-                        Power.getSignalStrength(this@MainActivity) { strength ->
-                            tvSignalStrength.text = "Мощность сигнала: $strength"
+                        Power.getSignalStrength(this@MainActivity) { strength, rsrp ->  // Изменено
+                            tvSignalStrength.text = "Мощность сигнала: $strength, RSRP: ${rsrp ?: "N/A"}" // Добавлено отображение RSRP
                         }
                     }
 
