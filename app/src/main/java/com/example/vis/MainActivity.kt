@@ -55,23 +55,13 @@ class MainActivity : Activity() {
             }
             addView(tvSignalStrength)
 
-            btnUpdate = Button(this@MainActivity).apply {
-                text = "Обновить"
-                layoutParams = LinearLayout.LayoutParams(
-                    300,
-                    120
-                ).apply {
-                    topMargin = 16
-                }
-                setOnClickListener {
-                    updateLocationData() // Обновление по нажатию кнопки
-                }
-            }
-            addView(btnUpdate)
+            // Кнопка btnUpdate удалена
+
         }
 
         setContentView(linearLayout)
-        LatLon.initialize(this)
+
+        LatLon.initialize(this) // Инициализация LatLon
         handler.post(updateRunnable) // Запускаем автоматическое обновление
     }
 
@@ -82,14 +72,6 @@ class MainActivity : Activity() {
         handler.removeCallbacks(updateRunnable)
     }
 
-
-    private fun requestLocationUpdates() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), LOCATION_PERMISSION_REQUEST_CODE)
-        } else {
-            updateLocationData()
-        }
-    }
 
     private fun updateLocationData() {
         LatLon.getLocation(this) { location ->
