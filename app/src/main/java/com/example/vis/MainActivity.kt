@@ -13,10 +13,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
+import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapFragment
@@ -26,9 +23,16 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import android.graphics.Color
 import com.google.android.gms.maps.model.PolylineOptions
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
 class MainActivity : Activity(), OnMapReadyCallback {
+
 
     private lateinit var tvLocation: TextView
     private lateinit var tvSignalStrength: TextView
@@ -38,8 +42,11 @@ class MainActivity : Activity(), OnMapReadyCallback {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private val cellInfoList = mutableListOf<CellInfo>()
-
     private var cameraPosition: CameraPosition? = null
+
+    private var previousCellInfo: CellInfo? = null
+
+
     private val updateRunnable = object : Runnable {
         override fun run() {
             updateData()
@@ -47,12 +54,16 @@ class MainActivity : Activity(), OnMapReadyCallback {
         }
     }
 
+
+
     private companion object {
         const val LOCATION_PERMISSION_REQUEST_CODE = 1000
     }
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
 
         val linearLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -62,15 +73,18 @@ class MainActivity : Activity(), OnMapReadyCallback {
             )
             setPadding(16, 16, 16, 16)
 
+
             tvLocation = TextView(this@MainActivity).apply {
                 textSize = 18f
             }
             addView(tvLocation)
 
+
             tvSignalStrength = TextView(this@MainActivity).apply {
                 textSize = 18f
             }
             addView(tvSignalStrength)
+
 
             val frameLayout = FrameLayout(this@MainActivity).apply {
                 layoutParams = LinearLayout.LayoutParams(
@@ -89,9 +103,10 @@ class MainActivity : Activity(), OnMapReadyCallback {
                 .replace(frameLayout.id, mapFragment!!)
                 .commit()
 
-            mapFragment?.getMapAsync(this@MainActivity)
 
+            mapFragment?.getMapAsync(this@MainActivity)
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this@MainActivity)
+
 
         }
 
@@ -100,17 +115,15 @@ class MainActivity : Activity(), OnMapReadyCallback {
         LatLon.initialize(this)
         handler.post(updateRunnable)
 
-
     }
 
 
-
-
-    private var previousCellInfo: CellInfo? = null
     override fun onMapReady(googleMap: GoogleMap) {
         this.googleMap = googleMap
-        updateData()
+
     }
+
+
     @SuppressLint("MissingPermission")
     private fun updateData() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
@@ -118,83 +131,127 @@ class MainActivity : Activity(), OnMapReadyCallback {
             LatLon.getLocation(this) { location ->
 
                 if (location != null) {
+
                     val latitude = location.latitude
                     val longitude = location.longitude
                     val latLng = LatLng(latitude, longitude)
 
+                    var strength : Int?
+                    var rsrp: Int?
+                    var pci : Int?
+
                     tvLocation.text = "Широта: $latitude\nДолгота: $longitude"
 
-
-                    Power.getSignalStrength(this@MainActivity) { strength, rsrp, pci -> // Используем 3 параметра
-                        val rsrpValue = rsrp ?: 0
-                        val currentCellInfo = CellInfo(pci, rsrpValue, latLng)
-                        tvSignalStrength.text = "Мощность сигнала: $strength, RSRP: $rsrpValue, PCI: $pci"
-                        googleMap?.let { googleMap ->
+                    val triple = Power.getSignalStrength(this@MainActivity) // Получаем triple
+                    strength = triple.first
+                    rsrp = triple.second
+                    pci = triple.third
 
 
-                            if (previousCellInfo != null && currentCellInfo.pci != previousCellInfo?.pci) {
-                                val previousLatLng = previousCellInfo!!.location
+                    val rsrpValue = rsrp ?: 0
+                    val currentCellInfo = CellInfo(pci, rsrpValue, latLng)
 
-                                googleMap.addPolyline(
-                                    PolylineOptions()
-                                        .add(previousLatLng, latLng)
-                                        .width(5f)
-                                        .color(Color.BLUE)
-                                )
+                    tvSignalStrength.text = "Мощность сигнала: $strength, RSRP: $rsrpValue, PCI: $pci"
 
 
-                                currentCellInfo.marker = googleMap.addMarker(
-                                    MarkerOptions()
-                                        .position(latLng)
-                                        .title("PCI: $pci, RSRP: $rsrpValue (Handover)")
-                                )
-                            }
-                            else if(cellInfoList.isEmpty()) {
-                                currentCellInfo.marker = googleMap.addMarker(
-                                    MarkerOptions()
-                                        .position(latLng)
-                                        .title("PCI: $pci, RSRP: $rsrpValue")
-                                )
-                            }
+                    googleMap?.let { googleMap ->
+                        if (previousCellInfo != null && currentCellInfo.pci != previousCellInfo?.pci) {
+                            val previousLatLng = previousCellInfo!!.location
 
-                            if (cameraPosition == null) {
-                                cameraPosition = CameraPosition.builder().target(latLng).zoom(15f).build()
-                                googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition!!))
-                            } else {
-                                cameraPosition = CameraPosition.builder().target(latLng).zoom(googleMap.cameraPosition.zoom).build()
-                                googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition!!))
-                            }
+                            googleMap.addPolyline(
+                                PolylineOptions()
+                                    .add(previousLatLng, latLng)
+                                    .width(5f)
+                                    .color(Color.BLUE)
+                            )
 
 
-                            googleMap.isMyLocationEnabled = true
-
+                            currentCellInfo.marker = googleMap.addMarker(
+                                MarkerOptions()
+                                    .position(latLng)
+                                    .title("PCI: $pci, RSRP: $rsrpValue (Handover)")
+                            )
                         }
-                        previousCellInfo = currentCellInfo
-                        cellInfoList.add(currentCellInfo)
+                        else if (cellInfoList.isEmpty()){
+                            currentCellInfo.marker = googleMap.addMarker(
+                                MarkerOptions()
+                                    .position(latLng)
+                                    .title("PCI: $pci, RSRP: $rsrpValue")
+                            )
+                        }
+
+                        if (cameraPosition == null) {
+                            cameraPosition = CameraPosition.builder().target(latLng).zoom(15f).build()
+                            googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition!!))
+                        } else {
+                            cameraPosition = CameraPosition.builder().target(latLng).zoom(googleMap.cameraPosition.zoom).build()
+                            googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition!!))
+                        }
+
+
+                        googleMap.isMyLocationEnabled = true
                     }
 
-                } else{
 
+                    previousCellInfo = currentCellInfo
+                    cellInfoList.add(currentCellInfo)
+
+                    val handover = if (previousCellInfo != null && currentCellInfo.pci != previousCellInfo?.pci) "true" else "false"
+
+                    val logMessage = "${getCurrentTimestamp()}, " +
+                            "Широта: $latitude, " +
+                            "Долгота: $longitude, " +
+                            "Мощность сигнала: $strength, " +
+                            "RSRP: $rsrpValue, " +
+                            "PCI: $pci, " +
+                            "Handover: $handover"
+
+                    saveLogToFile(logMessage)
+
+                }
+                else {
                     tvLocation.text = "Местоположение недоступно"
                 }
             }
+
+
+
         } else {
+
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                 LOCATION_PERMISSION_REQUEST_CODE
             )
 
+
         }
 
+    }
 
+    private fun getCurrentTimestamp(): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        return sdf.format(Date())
+    }
+
+
+
+    private fun saveLogToFile(logMessage: String) {
+        try {
+            val file = File(getExternalFilesDir(null), "location_log.csv")
+            val fos = FileOutputStream(file, true) // true для добавления в конец файла
+            fos.bufferedWriter().use { it.write("$logMessage\n") }
+            fos.close()
+        } catch (e: IOException) {
+            e.printStackTrace()
+
+        }
     }
 
 
     override fun onPause() {
         super.onPause()
         handler.removeCallbacks(updateRunnable)
-
     }
 
 

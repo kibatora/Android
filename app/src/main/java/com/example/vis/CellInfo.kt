@@ -8,6 +8,5 @@ data class CellInfo(
     val rsrp: Int,
     val location: LatLng,
     var marker: Marker? = null,
-    var previousCellInfo : CellInfo? = null // Хранит предыдущий объект CellInfo
-
+    var previousCellInfo : CellInfo? = null
 )

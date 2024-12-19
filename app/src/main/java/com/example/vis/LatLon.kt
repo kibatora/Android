@@ -32,7 +32,7 @@ object LatLon {
     }
 
     fun stopLocationUpdates(context: Context) {
-        // fusedLocationClient.removeLocationUpdates(locationCallback) теперь не надо, из за getLocation()
+        // fusedLocationClient.removeLocationUpdates(locationCallback)
     }
 
     fun initialize(context: Context){}
