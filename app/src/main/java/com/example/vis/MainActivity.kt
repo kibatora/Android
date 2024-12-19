@@ -24,6 +24,9 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
+import android.graphics.Color
+import com.google.android.gms.maps.model.PolylineOptions
+
 
 class MainActivity : Activity(), OnMapReadyCallback {
 
@@ -102,16 +105,18 @@ class MainActivity : Activity(), OnMapReadyCallback {
 
 
 
+
+    private var previousCellInfo: CellInfo? = null
     override fun onMapReady(googleMap: GoogleMap) {
         this.googleMap = googleMap
         updateData()
-
     }
 
 
     @SuppressLint("MissingPermission")
     private fun updateData() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
 
             LatLon.getLocation(this) { location ->
                 if (location != null) {
@@ -120,20 +125,41 @@ class MainActivity : Activity(), OnMapReadyCallback {
                     val latLng = LatLng(latitude, longitude)
 
                     tvLocation.text = "Широта: $latitude\nДолгота: $longitude"
-
                     Power.getSignalStrength(this@MainActivity) { strength, rsrp, pci ->
-                        val rsrpValue = rsrp ?: 0
 
+                        val rsrpValue = rsrp ?: 0
                         val currentCellInfo = CellInfo(pci, rsrpValue, latLng)
-                        cellInfoList.add(currentCellInfo)
+
                         tvSignalStrength.text = "Мощность сигнала: $strength, RSRP: $rsrpValue, PCI: $pci"
 
                         googleMap?.let { googleMap ->
-                            currentCellInfo.marker = googleMap.addMarker(
-                                MarkerOptions()
-                                    .position(latLng)
-                                    .title("PCI: $pci, RSRP: $rsrpValue")
-                            )
+
+
+                            if (previousCellInfo != null && currentCellInfo.pci != previousCellInfo?.pci) {
+                                val previousLatLng = previousCellInfo!!.location
+
+                                googleMap.addPolyline(
+                                    PolylineOptions()
+                                        .add(previousLatLng, latLng)
+                                        .width(5f)
+                                        .color(Color.BLUE)
+                                )
+
+                                currentCellInfo.marker = googleMap.addMarker(
+                                    MarkerOptions()
+                                        .position(latLng)
+                                        .title("PCI: $pci, RSRP: $rsrpValue (Handover)")
+                                )
+                            }
+                            else if (cellInfoList.isEmpty())
+                            {
+                                currentCellInfo.marker = googleMap.addMarker(
+                                    MarkerOptions()
+                                        .position(latLng)
+                                        .title("PCI: $pci, RSRP: $rsrpValue")
+                                )
+                            }
+
 
                             if (cameraPosition == null) {
                                 cameraPosition = CameraPosition.builder().target(latLng).zoom(15f).build()
@@ -143,19 +169,22 @@ class MainActivity : Activity(), OnMapReadyCallback {
                                 googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition!!))
                             }
 
+
                             googleMap.isMyLocationEnabled = true
-
-
                         }
+                        previousCellInfo = currentCellInfo
+                        cellInfoList.add(currentCellInfo)
                     }
+
                 }
-                else
-                {
+
+                else{
                     tvLocation.text = "Местоположение недоступно"
                 }
-            }
 
+            }
         }
+
         else {
             ActivityCompat.requestPermissions(
                 this,
@@ -164,8 +193,6 @@ class MainActivity : Activity(), OnMapReadyCallback {
             )
 
         }
-
-
     }
 
 
