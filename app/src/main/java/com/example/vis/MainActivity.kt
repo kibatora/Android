@@ -111,27 +111,24 @@ class MainActivity : Activity(), OnMapReadyCallback {
         this.googleMap = googleMap
         updateData()
     }
-
-
     @SuppressLint("MissingPermission")
     private fun updateData() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
-
             LatLon.getLocation(this) { location ->
+
                 if (location != null) {
                     val latitude = location.latitude
                     val longitude = location.longitude
                     val latLng = LatLng(latitude, longitude)
 
                     tvLocation.text = "Широта: $latitude\nДолгота: $longitude"
-                    Power.getSignalStrength(this@MainActivity) { strength, rsrp, pci ->
 
+
+                    Power.getSignalStrength(this@MainActivity) { strength, rsrp, pci -> // Используем 3 параметра
                         val rsrpValue = rsrp ?: 0
                         val currentCellInfo = CellInfo(pci, rsrpValue, latLng)
-
                         tvSignalStrength.text = "Мощность сигнала: $strength, RSRP: $rsrpValue, PCI: $pci"
-
                         googleMap?.let { googleMap ->
 
 
@@ -145,21 +142,20 @@ class MainActivity : Activity(), OnMapReadyCallback {
                                         .color(Color.BLUE)
                                 )
 
+
                                 currentCellInfo.marker = googleMap.addMarker(
                                     MarkerOptions()
                                         .position(latLng)
                                         .title("PCI: $pci, RSRP: $rsrpValue (Handover)")
                                 )
                             }
-                            else if (cellInfoList.isEmpty())
-                            {
+                            else if(cellInfoList.isEmpty()) {
                                 currentCellInfo.marker = googleMap.addMarker(
                                     MarkerOptions()
                                         .position(latLng)
                                         .title("PCI: $pci, RSRP: $rsrpValue")
                                 )
                             }
-
 
                             if (cameraPosition == null) {
                                 cameraPosition = CameraPosition.builder().target(latLng).zoom(15f).build()
@@ -171,21 +167,18 @@ class MainActivity : Activity(), OnMapReadyCallback {
 
 
                             googleMap.isMyLocationEnabled = true
+
                         }
                         previousCellInfo = currentCellInfo
                         cellInfoList.add(currentCellInfo)
                     }
 
-                }
+                } else{
 
-                else{
                     tvLocation.text = "Местоположение недоступно"
                 }
-
             }
-        }
-
-        else {
+        } else {
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
@@ -193,6 +186,8 @@ class MainActivity : Activity(), OnMapReadyCallback {
             )
 
         }
+
+
     }
 
 

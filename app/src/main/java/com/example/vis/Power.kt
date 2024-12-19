@@ -16,6 +16,7 @@ object Power {
                 var rsrp: Int? = null
                 var pci: Int? = null
 
+
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                     val cellSignalStrengths = signalStrength.cellSignalStrengths
                     for (cellSignalStrength in cellSignalStrengths) {
@@ -25,14 +26,21 @@ object Power {
                             }
                             is CellSignalStrengthNr -> {
                                 rsrp = cellSignalStrength.csiRsrp
+
                             }
+                            // ... (другие типы сетей)
                         }
                     }
                 }
-
-
-
+                else
+                {
+                    val cellSignalStrength = signalStrength.cellSignalStrengths.firstOrNull()
+                    if (cellSignalStrength is CellSignalStrengthLte) {
+                        rsrp = cellSignalStrength.rsrp
+                    }
+                }
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
+
                     for (info in telephonyManager.allCellInfo) {
                         if (info is CellInfoLte) {
                             pci = (info.cellIdentity as CellIdentityLte).pci
@@ -42,15 +50,12 @@ object Power {
 
                 }
 
-
-
-
-                callback(strength, rsrp, pci)
+                callback(strength, rsrp, pci) // Передаем strength, rsrp и pci
             }
         }
+
         telephonyManager.registerTelephonyCallback(context.mainExecutor, telephonyCallback)
 
 
     }
-
 }
