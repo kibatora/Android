@@ -18,7 +18,6 @@ object LatLon {
 
 
 
-
     fun initialize(context: Context) {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
         locationCallback = object : LocationCallback() {
@@ -43,10 +42,8 @@ object LatLon {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             val locationRequest = LocationRequest.create().apply {
                 interval = 30000
-                fastestInterval = 10000
                 priority = Priority.PRIORITY_HIGH_ACCURACY
             }
-
 
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
 
@@ -56,12 +53,14 @@ object LatLon {
                     if (location != null) {
                         callback(location)
                         currentLocation = location
-                    }
 
+                    }
                 }
 
-
+        } else {
+            callback(null)
         }
+
     }
 
     fun stopLocationUpdates(context: Context) {

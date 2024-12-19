@@ -11,12 +11,17 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.*
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapFragment
 import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 
@@ -30,11 +35,11 @@ class MainActivity : Activity(), OnMapReadyCallback {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private val cellInfoList = mutableListOf<CellInfo>()
-    //private var pci: Int = 0
 
+    private var cameraPosition: CameraPosition? = null
     private val updateRunnable = object : Runnable {
         override fun run() {
-            updateLocationData()
+            updateData()
             handler.postDelayed(this, 30000)
         }
     }
@@ -75,91 +80,108 @@ class MainActivity : Activity(), OnMapReadyCallback {
             }
             addView(frameLayout)
 
+
             mapFragment = MapFragment.newInstance()
             fragmentManager.beginTransaction()
                 .replace(frameLayout.id, mapFragment!!)
                 .commit()
 
             mapFragment?.getMapAsync(this@MainActivity)
+
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this@MainActivity)
 
         }
+
 
         setContentView(linearLayout)
         LatLon.initialize(this)
         handler.post(updateRunnable)
 
+
     }
+
 
 
     override fun onMapReady(googleMap: GoogleMap) {
         this.googleMap = googleMap
-        updateLocationData()
+        updateData()
+
     }
+
 
     @SuppressLint("MissingPermission")
-    private fun updateLocationData() {
+    private fun updateData() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            val locationRequest = LocationRequest.create().apply {
-                interval = 10000
-                fastestInterval = 5000
-                priority = Priority.PRIORITY_HIGH_ACCURACY
-            }
 
-            locationCallback = object : LocationCallback() {
-                override fun onLocationResult(locationResult: LocationResult) {
-                    val location = locationResult.lastLocation
+            LatLon.getLocation(this) { location ->
+                if (location != null) {
+                    val latitude = location.latitude
+                    val longitude = location.longitude
+                    val latLng = LatLng(latitude, longitude)
 
+                    tvLocation.text = "Широта: $latitude\nДолгота: $longitude"
 
-                    if (location != null) {
-                        val latitude = location.latitude
-                        val longitude = location.longitude
-                        val latLng = LatLng(latitude, longitude)
+                    Power.getSignalStrength(this@MainActivity) { strength, rsrp, pci ->
+                        val rsrpValue = rsrp ?: 0
 
-                        tvLocation.text = "Широта: $latitude\nДолгота: $longitude"
+                        val currentCellInfo = CellInfo(pci, rsrpValue, latLng)
+                        cellInfoList.add(currentCellInfo)
+                        tvSignalStrength.text = "Мощность сигнала: $strength, RSRP: $rsrpValue, PCI: $pci"
 
+                        googleMap?.let { googleMap ->
+                            currentCellInfo.marker = googleMap.addMarker(
+                                MarkerOptions()
+                                    .position(latLng)
+                                    .title("PCI: $pci, RSRP: $rsrpValue")
+                            )
 
-                        Power.getSignalStrength(this@MainActivity) { strength, rsrp, pci -> // Добавили pci в лямбду
-                            val rsrpValue = rsrp ?: 0
-                            val currentCellInfo = CellInfo(pci, rsrpValue, latLng) // Используем pci в CellInfo
-                            cellInfoList.add(currentCellInfo)
-                            tvSignalStrength.text = "Мощность сигнала: $strength, RSRP: $rsrpValue, PCI: $pci"
-
-                            googleMap?.let { googleMap ->
-                                currentCellInfo.marker = googleMap.addMarker(
-                                    MarkerOptions()
-                                        .position(latLng)
-                                        .title("PCI: $pci, RSRP: $rsrpValue")
-                                )
-
-                                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
-                                googleMap.isMyLocationEnabled = true
-
-
+                            if (cameraPosition == null) {
+                                cameraPosition = CameraPosition.builder().target(latLng).zoom(15f).build()
+                                googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition!!))
+                            } else {
+                                cameraPosition = CameraPosition.builder().target(latLng).zoom(googleMap.cameraPosition.zoom).build()
+                                googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition!!))
                             }
+
+                            googleMap.isMyLocationEnabled = true
+
+
                         }
                     }
-
                 }
-
+                else
+                {
+                    tvLocation.text = "Местоположение недоступно"
+                }
             }
 
-
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
         }
-    }
+        else {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
 
+        }
+
+
+    }
 
 
     override fun onPause() {
         super.onPause()
         handler.removeCallbacks(updateRunnable)
+
     }
+
 
     override fun onDestroy() {
         super.onDestroy()
         LatLon.stopLocationUpdates(this)
     }
+
+
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -169,7 +191,7 @@ class MainActivity : Activity(), OnMapReadyCallback {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                updateLocationData()
+                updateData()
             } else {
                 tvLocation.text = "Нет разрешения на доступ к локации"
             }
