@@ -11,6 +11,8 @@ activityCompose = "1.9.3"
 composeBom = "2024.12.01"
 playServicesLocation = "21.3.0"
 playlocation = "21.3.0"
+playServicesMaps = "19.0.0"
+fragmentKtx = "1.8.5"
 
 [libraries]
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
@@ -30,6 +32,8 @@ androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 play-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playlocation" }
+play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
+androidx-fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragmentKtx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

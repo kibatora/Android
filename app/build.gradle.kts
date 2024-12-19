@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.vis"
-        minSdk = 24
+        minSdk = 31
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -51,8 +51,9 @@ android {
 
 dependencies {
 
-    implementation("com.google.android.gms:play-services-maps:19.0.0")
-    implementation ("androidx.fragment:fragment-ktx:1.8.5")
+    implementation(libs.play.services.maps)
+    implementation(libs.androidx.fragment.ktx)
+    implementation(libs.play.services.location) // Или более новую
     implementation(libs.play.location)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
